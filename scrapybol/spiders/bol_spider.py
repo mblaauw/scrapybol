@@ -1,6 +1,10 @@
 import re
 from scrapy.spider import BaseSpider
 from scrapy.selector import HtmlXPathSelector
+
+from scrapybol.items import ScrapybolItem
+
+
 from bs4 import BeautifulSoup
 from urllib2 import urlopen
 
@@ -16,7 +20,7 @@ class BolSpider(BaseSpider):
     total_nr_of_items = re.sub('<[^>]+>', '', str(soup.find('span', 'tst_searchresults_nrFoundItems')))
     total_nr_of_items = int(round(int(float(total_nr_of_items.replace('.', '')))/12))
 
-    total_nr_of_items = 5
+    #total_nr_of_items = 2
 
     start_urls = []
     for eachItem in range(0, total_nr_of_items):
@@ -25,62 +29,30 @@ class BolSpider(BaseSpider):
 
 
     def parse(self, response):
+        items = []
+
         hxs = HtmlXPathSelector(response)
 
-        ratings = []
-        sites = hxs.select('//meta[@itemprop="ratingValue"]')
+        sites = hxs.select('//div[@class="list_view"]')
         for site in sites:
-            ratings.append(str(site.select('@content').extract())[3:-2])
+            item = ScrapybolItem()
+            #item['ratings'] 			= str(site.select('//meta[@itemprop="ratingValue"]/@content').extract())[3:-2]
+            item['isbns']              	= str(site.select('//img[@itemprop="image"]/@src').extract())
+            item['languages']           = str(site.select('//meta[@itemprop="inLanguage"]/@content').extract())
+            item['pubdates']            = str(site.select('//meta[@itemprop="datePublished"]/@content').extract())
+            item['covers']              = str(site.select('//img[@itemprop="image"]/@src').extract())
+            item['titles']              = str(site.select('//a[@itemprop="name"]/text()').extract())
+            item['authors']             = str(site.select('//a[@itemprop="author"]/text()').extract())
+            item['bindingcodes']        = str(site.select('//span[@data-attr-key="BINDINGCODE"]/text()').extract())
+            #item['prices']              = str(site.select('//strong[@itemprop="price"]/text()').extract())
+            #item['ebookprices']         = str(site.select('//span[@class="pricetag"]/text()').extract())
+            items.append(item)
 
-        languages = []
-        sites = hxs.select('//meta[@itemprop="inLanguage"]')
-        for site in sites:
-            languages.append(str(site.select('@content').extract())[3:-2])
+        return items
 
-        pubdates = []
-        sites = hxs.select('//meta[@itemprop="datePublished"]')
-        for site in sites:
-            pubdates.append(str(site.select('@content').extract())[3:-2])
 
-        covers = []
-        isbns = []
-        sites = hxs.select('//img[@itemprop="image"]')
-        for site in sites:
-            isbn = str(site.select('@src').extract())
-            isbn = str(isbn[len(isbn)-25:-6])
 
-            # todo: clean the isbn further
-
-            isbns.append(isbn)
-            covers.append(str(site.select('@src').extract())[3:-2])
-
-        titles = []
-        sites = hxs.select('//a[@itemprop="name"]')
-        for site in sites:
-            titles.append(str(site.select('text()').extract())[3:-2])
-
-        authors = []
-        sites = hxs.select('//a[@itemprop="author"]')
-        for site in sites:
-            authors.append(str(site.select('text()').extract())[3:-2])
-
-        prices = []
-        sites = hxs.select('//strong[@itemprop="price"]')
-        for site in sites:
-            prices.append(str(site.select('text()').extract())[10:-2])
-
-        ebookprices = []
-        sites = hxs.select('//span[@class="pricetag"]')
-        for site in sites:
-            ebookprices.append(str(site.select('text()').extract())[10:-2])
-
-        bindingcodes = []
-        sites = hxs.select('//span[@data-attr-key="BINDINGCODE"]')
-        for site in sites:
-            bindingcodes.append(str(site.select('text()').extract_unquoted())[11:25])
-
-        result = zip(isbns, ratings, languages, pubdates, covers, titles, authors, prices, ebookprices, bindingcodes)
-        print result
+        # result = zip(isbns, ratings, languages, pubdates, covers, titles, authors, prices, ebookprices, bindingcodes)
 
 
 
